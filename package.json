@@ -7,20 +7,31 @@
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
-    "test:unit": "vitest",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "run-s \"lint:*\"",
-    "lint:oxlint": "oxlint . --fix",
-    "lint:eslint": "eslint . --fix --cache",
-    "format": "prettier --write --experimental-cli src/"
+    "lint:oxlint": "oxlint .",
+    "lint:eslint": "eslint . --max-warnings 0",
+    "format": "prettier --write --experimental-cli src/ e2e/",
+    "lint:fix": "oxlint . --fix && eslint . --fix",
+    "format:check": "prettier --check --experimental-cli src/ e2e/",
+    "build:android": "npm run build && cap sync android && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@material/web": "^2.5.0",
+    "maplibre-gl": "^5.24.1",
     "pinia": "^4.0.3",
-    "vue": "^3.5.42"
+    "vue": "^3.5.42",
+    "vue-i18n": "^11.4.23"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
+    "@material-symbols/svg-400": "^0.49.0",
     "@playwright/test": "^1.63.0",
     "@tsconfig/node24": "^24.0.5",
     "@types/jsdom": "^30.0.0",
@@ -49,5 +60,6 @@
   },
   "engines": {
     "node": "^22.18.0 || >=24.12.0"
-  }
+  },
+  "description": "Weather app in Vue and Material Web, wrapped with Capacitor: a map, place search and a weekly forecast from Open-Meteo."
 }
