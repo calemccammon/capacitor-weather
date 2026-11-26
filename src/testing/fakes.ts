@@ -83,7 +83,7 @@ export class FakeWeatherRepository implements WeatherRepository {
   /** Every unanswered search, in the order they were sent. */
   readonly searchCalls: Deferred<Place[]>[] = []
   readonly forecasts: Deferred<Forecast>[] = []
-  readonly forecastRequests: { latitude: number; longitude: number; units: Units }[] = []
+  readonly forecastRequests: { latitude: number; longitude: number }[] = []
 
   /** When set, searches answer with this at once. */
   placesToReturn?: Place[]
@@ -104,7 +104,7 @@ export class FakeWeatherRepository implements WeatherRepository {
     return deferred.promise
   }
 
-  forecast(request: { latitude: number; longitude: number; units: Units }): Promise<Forecast> {
+  forecast(request: { latitude: number; longitude: number }): Promise<Forecast> {
     this.forecastRequests.push(request)
     if (this.failure !== undefined) return Promise.reject(this.failure)
     if (this.forecastToReturn !== undefined) return Promise.resolve(this.forecastToReturn)

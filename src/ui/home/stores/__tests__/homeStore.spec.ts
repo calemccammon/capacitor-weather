@@ -46,10 +46,9 @@ it('shows a selected place at once, and its forecast when that arrives', async (
   weather.forecasts[0]?.resolve(sampleForecast())
   await settle()
 
-  expect(temperature(home)).toBe('36°F')
-  expect(weather.forecastRequests).toEqual([
-    { latitude: 35.6, longitude: -82.55, units: 'imperial' },
-  ])
+  // The forecast comes in Celsius and is shown in the device's Fahrenheit.
+  expect(temperature(home)).toBe('96°F')
+  expect(weather.forecastRequests).toEqual([{ latitude: 35.6, longitude: -82.55 }])
 })
 
 it('selects a point picked off the map by its coordinates', async () => {
@@ -80,7 +79,7 @@ it('words a failure for the user, and can succeed on another try', async () => {
 
   expect(home.state.forecast).toEqual({ kind: 'loading' })
   await settle()
-  expect(temperature(home)).toBe('36°F')
+  expect(temperature(home)).toBe('96°F')
 })
 
 it.each([
@@ -103,7 +102,7 @@ it.each([
   weather.forecasts[1]?.resolve(sampleForecast())
   await settle()
 
-  expect(temperature(home)).toBe('36°F')
+  expect(temperature(home)).toBe('96°F')
 })
 
 it('goes back to the start when the place is cleared, and drops the forecast on its way', async () => {
@@ -117,25 +116,40 @@ it('goes back to the start when the place is cleared, and drops the forecast on 
   expect(home.state).toEqual({ units: 'fahrenheit', place: null, forecast: { kind: 'idle' } })
 })
 
-it('asks for the forecast again in other units, and remembers the choice', async () => {
+it('converts the forecast on screen to other units without asking again, and remembers the choice', async () => {
   const { home, weather, settings } = makeStores()
   weather.forecastToReturn = sampleForecast()
   home.select(asheville)
   await settle()
   const place = home.state.place
+  expect(temperature(home)).toBe('96°F')
 
   home.setUnits('celsius')
 
   expect(home.state.units).toBe('celsius')
-  expect(home.state.forecast).toEqual({ kind: 'loading' })
+  expect(temperature(home)).toBe('36°C')
   // The very same place, so the map has no reason to move.
   expect(home.state.place).toBe(place)
 
+  home.setUnits('fahrenheit')
+  await settle()
+
+  expect(temperature(home)).toBe('96°F')
+  expect(weather.forecastRequests).toHaveLength(1)
+  expect(settings.saved).toEqual(['metric', 'imperial'])
+})
+
+it('shows a forecast still on its way in the units chosen while it was', async () => {
+  const { home, weather } = makeStores()
+  home.select(asheville)
+
+  home.setUnits('celsius')
+  expect(home.state).toMatchObject({ units: 'celsius', forecast: { kind: 'loading' } })
+  weather.forecasts[0]?.resolve(sampleForecast())
   await settle()
 
   expect(temperature(home)).toBe('36°C')
-  expect(weather.forecastRequests.map((request) => request.units)).toEqual(['imperial', 'metric'])
-  expect(settings.saved).toEqual(['metric'])
+  expect(weather.forecastRequests).toHaveLength(1)
 })
 
 it('does nothing when the units already shown are chosen', async () => {

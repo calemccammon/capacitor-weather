@@ -1,5 +1,5 @@
 import { sampleForecast } from '../../../testing/fakes'
-import { isToday } from '../forecast'
+import { inUnits, isToday } from '../forecast'
 import { normalizeLongitude, placeFromCoordinates } from '../place'
 import { unitsForCountry } from '../units'
 
@@ -53,5 +53,47 @@ describe('a forecast', () => {
       false,
       false,
     ])
+  })
+})
+
+describe('a forecast in other units', () => {
+  const metric = sampleForecast({
+    days: [
+      { date: '2026-11-20', low: 0, high: 10, condition: 'rain', precipitationChance: 47 },
+      { date: '2026-11-21', low: -40, high: 37.5, condition: 'clear' },
+    ],
+  })
+
+  it('is the same forecast in metric', () => {
+    expect(inUnits(metric, 'metric')).toBe(metric)
+  })
+
+  it('has its temperatures in Fahrenheit and its wind in mph in imperial', () => {
+    const imperial = inUnits(
+      { ...metric, current: { ...metric.current, windSpeed: 20 } },
+      'imperial',
+    )
+
+    expect(imperial.current.temperature).toBeCloseTo(35.8 * 1.8 + 32, 9)
+    expect(imperial.current.feelsLike).toBeCloseTo(31.3 * 1.8 + 32, 9)
+    expect(imperial.current.windSpeed).toBeCloseTo(12.43, 2)
+    expect(imperial.days.map((day) => [day.low, day.high])).toEqual([
+      [32, 50],
+      [-40, 99.5],
+    ])
+  })
+
+  it('keeps everything that has no units as it was', () => {
+    const imperial = inUnits(metric, 'imperial')
+
+    expect({ ...imperial.current, temperature: 0, feelsLike: 0, windSpeed: 0 }).toEqual({
+      ...metric.current,
+      temperature: 0,
+      feelsLike: 0,
+      windSpeed: 0,
+    })
+    expect(imperial.days.map((day) => ({ ...day, low: 0, high: 0 }))).toEqual(
+      metric.days.map((day) => ({ ...day, low: 0, high: 0 })),
+    )
   })
 })

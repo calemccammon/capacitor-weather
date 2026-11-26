@@ -22,23 +22,32 @@ export const places = {
   ],
 }
 
-/** A week starting Friday 20 November 2026, measured that morning. */
+/** Degrees Celsius for `degrees` Fahrenheit. */
+const celsius = (degrees: number) => (degrees - 32) / 1.8
+/** Kilometres an hour for `speed` in miles an hour. */
+const kmh = (speed: number) => speed / 0.621371
+
+/**
+ * A week starting Friday 20 November 2026, measured that morning. The app
+ * asks for Celsius and km/h, so it comes in those, from the Fahrenheit and mph
+ * the tests read.
+ */
 export function forecast(): Record<string, unknown> {
   const days = Array.from({ length: 7 }, (_, i) => i)
   return {
     current: {
       time: '2026-11-20T09:00',
-      temperature_2m: 35.8,
-      apparent_temperature: 31.3,
+      temperature_2m: celsius(35.8),
+      apparent_temperature: celsius(31.3),
       weather_code: 0,
-      wind_speed_10m: 4.4,
+      wind_speed_10m: kmh(4.4),
       is_day: 1,
     },
     daily: {
       time: days.map((i) => `2026-11-${20 + i}`),
       weather_code: days.map((i) => (i === 2 ? 61 : 0)),
-      temperature_2m_max: days.map((i) => 62 + i),
-      temperature_2m_min: days.map((i) => 27 + i),
+      temperature_2m_max: days.map((i) => celsius(62 + i)),
+      temperature_2m_min: days.map((i) => celsius(27 + i)),
       precipitation_probability_max: days.map((i) => (i === 2 ? 80 : 0)),
     },
   }
