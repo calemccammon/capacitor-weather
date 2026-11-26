@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 
+import { inUnits, type Forecast } from '../../../domain/models/forecast'
 import { placeFromCoordinates, type Place } from '../../../domain/models/place'
 import type { Units } from '../../../domain/models/units'
 import {
@@ -20,6 +21,9 @@ import { unitsUiModelFrom, unitsUiModelToDomain, type UnitsUiModel } from '../mo
 /**
  * Holds the selected place and the chosen units, and loads the forecast.
  *
+ * The forecast is kept as it came, in metric units, and converted for the
+ * screen, so changing units needs no request.
+ *
  * Selecting a place while an earlier forecast is still on its way throws the
  * earlier answer away when it arrives.
  */
@@ -30,6 +34,8 @@ export const useHomeStore = defineStore('home', () => {
 
   let place: Place | null = null
   let units: Units = need(getUnitsKey).execute(need(deviceCountryKey))
+  /** The forecast on screen, in metric units, or null when none is. */
+  let shownForecast: Forecast | null = null
 
   /**
    * Counts forecast requests, so an answer can tell whether it is still the
@@ -57,13 +63,14 @@ export const useHomeStore = defineStore('home', () => {
 
   function clear(): void {
     place = null
+    shownForecast = null
     request++
     state.value = { units: unitsUiModelFrom(units), place: null, forecast: { kind: 'idle' } }
   }
 
   /**
    * Shows forecasts in `chosen` from now on, and remembers the choice. The
-   * forecast on screen is asked for again in them.
+   * forecast on screen is converted on the spot, with no request.
    */
   function setUnits(chosen: UnitsUiModel): void {
     const next = unitsUiModelToDomain(chosen)
@@ -73,12 +80,12 @@ export const useHomeStore = defineStore('home', () => {
     // carries on with the new.
     saveUnits.execute(next).catch(() => undefined)
 
-    const shown = state.value.place
-    if (shown === null) {
-      state.value = { ...state.value, units: chosen }
-    } else {
-      // The same place as before, so the map has no reason to move.
-      void load(shown)
+    // The same place as before, so the map has no reason to move. A forecast
+    // still loading or failed stays as it is.
+    state.value = {
+      ...state.value,
+      units: chosen,
+      ...(shownForecast === null ? {} : { forecast: loaded(shownForecast) }),
     }
   }
 
@@ -92,21 +99,37 @@ export const useHomeStore = defineStore('home', () => {
     const asked = place
     if (asked === null) return
     const mine = ++request
-    const askedIn = units
-    show(shown, askedIn, { kind: 'loading' })
+    shownForecast = null
+    show(shown, { kind: 'loading' })
 
-    let outcome: ForecastState
+    let forecast: Forecast | null = null
+    let failure: unknown
     try {
-      const forecast = await getForecast.execute(asked, askedIn)
-      outcome = { kind: 'loaded', forecast: forecastUiModelFrom(forecast, askedIn, wording()) }
+      forecast = await getForecast.execute(asked)
     } catch (error) {
-      outcome = { kind: 'failed', message: messageForError(error, wording().t) }
+      failure = error
     }
-    if (mine === request) show(shown, askedIn, outcome)
+    if (mine !== request) return
+    // In the units chosen now, which may not be those chosen when it was asked for.
+    shownForecast = forecast
+    show(
+      shown,
+      forecast === null
+        ? { kind: 'failed', message: messageForError(failure, wording().t) }
+        : loaded(forecast),
+    )
   }
 
-  function show(shown: PlaceUiModel, shownIn: Units, forecast: ForecastState): void {
-    state.value = { units: unitsUiModelFrom(shownIn), place: shown, forecast }
+  /** The metric `forecast` as the screen shows it, in the units chosen. */
+  function loaded(forecast: Forecast): ForecastState {
+    return {
+      kind: 'loaded',
+      forecast: forecastUiModelFrom(inUnits(forecast, units), units, wording()),
+    }
+  }
+
+  function show(shown: PlaceUiModel, forecast: ForecastState): void {
+    state.value = { units: unitsUiModelFrom(units), place: shown, forecast }
   }
 
   return { state, select, selectPoint, clear, setUnits, retryForecast }

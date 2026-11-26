@@ -168,14 +168,16 @@ test.describe('forecast', () => {
 
     await page.getByRole('button', { name: 'Celsius and km/h' }).click()
 
-    await expect(page.getByText('36°C')).toBeVisible()
-    await expect(page.getByText('Wind 4 km/h')).toBeVisible()
-    expect(service.forecasts.at(-1)?.searchParams.get('temperature_unit')).toBe('celsius')
+    // Converted on the device: no second request.
+    await expect(page.getByText('2°C')).toBeVisible()
+    await expect(page.getByText('Wind 7 km/h')).toBeVisible()
+    expect(service.forecasts).toHaveLength(1)
+    expect(service.forecasts[0]?.searchParams.get('temperature_unit')).toBe('celsius')
 
     await page.reload()
     await chooseAsheville(page)
 
-    await expect(page.getByText('36°C')).toBeVisible()
+    await expect(page.getByText('2°C')).toBeVisible()
   })
 })
 
